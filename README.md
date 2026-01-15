@@ -23,16 +23,16 @@ Follow these steps to get your bot up and running:
 ### 1. Telegram Bot Token
 Open `spotytdl_bot.py` and insert your Telegram Bot Token at **row 12**:
 
-BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+    BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
 
-2. YouTube API Keys
+###2. YouTube API Keys
 
 Open spotytdl.py and add your YouTube API keys at row 10. You can add multiple keys to avoid rate limits:
 Python
 
-API_KEY = ["KEY_1", "KEY_2"]
+    API_KEY = ["KEY_1", "KEY_2"]
 
-3. YouTube OAuth Credentials (Required for Migration)
+###3. YouTube OAuth Credentials (Required for Migration)
 
 To use the playlist migration feature (/SpotifyToYoutube), the bot needs to act on your behalf:
 
@@ -50,14 +50,14 @@ To use the playlist migration feature (/SpotifyToYoutube), the bot needs to act 
 
     Important: Ensure you add your email (and any other testers) to the Test Users list in the "OAuth Consent Screen" section.
 
-4. Spotify Access Token (Temporary Workaround)
+###4. Spotify Access Token (Temporary Workaround)
 
     [!IMPORTANT] The automatic Spotify token retrieval is currently under maintenance.
 
 If you need to download Spotify Playlists or Albums, you must manually provide a valid access token. Open spotytdl.py, go to row 127 and insert your token:
 Python
 
-access_token = "YOUR_SPOTIFY_ACCESS_TOKEN"
+    access_token = "YOUR_SPOTIFY_ACCESS_TOKEN"
 
 🎮 Commands
 
