@@ -114,14 +114,14 @@ def download_single_track(url,title,album_cover=None):
         except yt_dlp.utils.DownloadError as e:
             error_msg = str(e).lower()
             if "sign in to confirm your age" in error_msg or "age restriction" in error_msg:
-                print(f"❌ Skipping {title} due to age restriction.")
+                print(f"Skipping {title} due to age restriction.")
                 return title
             elif n_try < 5:
-                print(f"⚠️ Retry {n_try + 1} for {title}")
+                print(f"Retry {n_try + 1} for {title}")
                 n_try += 1
                 continue
             else:
-                print(f"❌ Failed to download {title} after retries.")
+                print(f"Failed to download {title} after retries.")
                 return title
             
         #except Exception as e:
@@ -159,7 +159,7 @@ def getSpotifyAlbumCover(soup):
             img_tag = entity_image_div.find("img")
             if img_tag and img_tag.has_attr("src"):
                 url=img_tag["src"]
-                print("URL immagine:", img_tag["src"])
+                print("URL img:", img_tag["src"])
                 img=session.get(url)
                 image_name = url.split("/")[-1] + ".jpg"
                 with open (image_name,"wb") as file:
@@ -212,16 +212,15 @@ def create_yt_playlist(youtube, title, description="Playlist migrata da Spotify"
             body=body
         )
         response = request.execute()
-        print(f"Playlist creata: {response['id']}")
+        print(f"Playlist created: {response['id']}")
         return response["id"]
     except Exception as e:
-        print(f"Errore creazione playlist: {e}")
+        print(f"Error while creating the playlist: {e}")
         return None
     
 def add_track_to_yt_playlist(youtube, playlist_id, video_id):
-    """Aggiunge un video alla playlist tramite API"""
     try:
-        with yt_api_lock: # Importante: le librerie google non sempre sono thread-safe
+        with yt_api_lock:
             request = youtube.playlistItems().insert(
                 part="snippet",
                 body={
@@ -235,10 +234,10 @@ def add_track_to_yt_playlist(youtube, playlist_id, video_id):
                 }
             )
             request.execute()
-            print(f"Video {video_id} aggiunto alla playlist.")
+            print(f"Video {video_id} added to the playlist.")
             return True
     except Exception as e:
-        print(f"Errore aggiunta video {video_id}: {e}")
+        print(f"Error while adding video: {video_id}: {e}")
         return False
         
 def threadingAddToPlaylist(track, title, index, results_list):
@@ -247,18 +246,18 @@ def threadingAddToPlaylist(track, title, index, results_list):
         if url:
             video_id = getVideoId(url)
             if video_id:
-                # Invece di aggiungere subito, salviamo l'ID nella posizione corretta
+                
                 results_list[index] = video_id
             else:
-                print(f"Video ID non trovato per {title}")
+                print(f"Unable to find the video: {title}")
         else:
-            print(f"Video non trovato per {title}")
+            print(f"Unable to find the video: {title}")
     except Exception as e:
-        print(f"Errore nel thread migrazione per {title}: {e}")
+        print(f"Thread error while migrating {title}: {e}")
 
 
 def getPlaylistId(url):
-    regex=r"list=([^&]+)" # uno o più caratteri dopo list= fino ad incontrare un eventuale &
+    regex=r"list=([^&]+)" 
     try:
         id=re.findall(regex,url)
         return id[0]
@@ -267,7 +266,7 @@ def getPlaylistId(url):
         exit()
 
 def getVideoId(url):
-    regex=r"v=([^&]+)" # uno o più caratteri dopo list= fino ad incontrare un eventuale &
+    regex=r"v=([^&]+)" 
     try:
         id=re.findall(regex,url)
         if(id):
@@ -325,7 +324,6 @@ def getTitleFromVideo(id):
     #with open("response.txt","w",encoding="utf-8") as file:
     #    json.dump(title,file, indent=4, ensure_ascii=False)
     title=title["items"][0]["snippet"]["title"]
-    print("RISPOSTA TITOLO",title)  
     return title  
 
 
@@ -333,7 +331,7 @@ def getSpotPlaylistIdFromUrl(url):
     print(url)
     regex=r"playlist/([^?]+)"
     id=re.findall(regex,url)
-    print("ID PLAYLIST",id[0])
+    print("PLAYLIST ID",id[0])
     return id[0]
 
 
@@ -483,7 +481,7 @@ def main(url,cmd=None,youtube_client=None):
                 raise RuntimeError("Invalid URL")
         else:
             if not youtube_client:
-                raise RuntimeError("Client YouTube non fornito per la migrazione!")
+                raise RuntimeError("Missing Youtube Client")
             
             time=Spotify_helper.get_server_time(session)
             totp=Spotify_helper.get_totp(time)
@@ -494,41 +492,40 @@ def main(url,cmd=None,youtube_client=None):
             try:
                 playlist_name = playlistjson["data"]["playlistV2"]["name"]
             except:
-                playlist_name = "Playlist Migrata SpotYT"
-            # 1. Crea la playlist su YouTube
+                playlist_name = "Playlist Migrated with @SpotYT"
+
             yt_playlist_id = create_yt_playlist(youtube_client, playlist_name)
             
             if not yt_playlist_id:
-                raise RuntimeError("Impossibile creare la playlist su YouTube.")
+                raise RuntimeError("Unable to create a Youtube playlist")
             
             titles = []
             threads = []
             
-            # Creiamo una lista vuota della stessa lunghezza delle tracce per mantenere l'ordine
             ordered_video_ids = [None] * len(tracks)
 
-            # Usiamo enumerate per avere l'indice (i)
+
             for i, track in enumerate(tracks):
                 title = sanitize_filename(track)
                 titles.append(title)
                 
-                # Passiamo l'indice 'i' e la lista 'ordered_video_ids'
+
                 thread = threading.Thread(target=threadingAddToPlaylist, args=(track, title, i, ordered_video_ids))
                 threads.append(thread)
                 thread.start()
             
-            # Aspettiamo che TUTTI abbiano finito la ricerca
+
             for thread in threads:
                 thread.join()    
             
-            print("Ricerca completata. Inizio inserimento ordinato in playlist...")
+            print("Adding to the playlist...")
 
-            # ORA inseriamo i video nella playlist nell'ordine corretto
+
             for video_id in ordered_video_ids:
-                if video_id: # Se l'ID è stato trovato
+                if video_id:
                     add_track_to_yt_playlist(youtube_client, yt_playlist_id, video_id)
             
-            print("Migrazione completata:", titles)
+            print("Migration completed", titles)
             return titles
 
     except RuntimeError as e:
@@ -538,5 +535,5 @@ def main(url,cmd=None,youtube_client=None):
 
 
 if __name__ == "__main__":
-    main("https://open.spotify.com/intl-it/track/4kkaj13ndqkCY1ga1p6WHA?si=84d3c1a0dc304c2b")
+    main("")
 
