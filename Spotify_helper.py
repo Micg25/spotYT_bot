@@ -101,7 +101,7 @@ def get_totp(server_time):
 # It rotates each printable ASCII character (from ! to ~) by 47 positions, resulting in a different set of characters for both letters, numbers, and symbols.
 
 
-#THIS IS NOT WORKING 
+
 def get_access_token(totp,server_time,session):
     #TOFIX
     #token_params={
@@ -124,10 +124,7 @@ def get_access_token(totp,server_time,session):
     #print(resp.text)
     #access_token=str(session.get(token_access_url,params=token_params).json()['accessToken'])
     #print(access_token)
-
-    #Since it's not working you have to put your own access_token, it can be easily found by opening your netowrk tab
-    #while you open a spotify playlist, search for access token among the requests that your browser made
-    access_token="" #insert your access token
+    access_token=""
     return access_token
 
 def get_gid_metadata(session,access_token,gid):
