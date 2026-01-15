@@ -22,7 +22,7 @@ Follow these steps to get your bot up and running:
 
 ### 1. Telegram Bot Token
 Open `spotytdl_bot.py` and insert your Telegram Bot Token at **row 12**:
-```python
+
 BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
 
 2. YouTube API Keys
