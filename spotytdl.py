@@ -7,26 +7,21 @@ import json
 import Spotify_helper
 import subprocess
 import os
+
 API_KEY=["",""]
-session=requests.session()
-to_erase = []  
-to_erase_lock = threading.Lock()
+
 yt_api_lock = threading.Lock()
 
 def sanitize_filename(title):
-    
     title = re.sub(r'[^\w\s\-_.]', '', title)
-    
     title = title.strip().replace(" ", "_")
-    
     title = re.sub(r'[._]+$', '', title)
     return title
 
-def get_url_by_query(query):
+def get_url_by_query(query, session):
     endpoint="https://www.googleapis.com/youtube/v3/search"
     for key in API_KEY:
         params={
-
             "key":key,
             "q":query,
             "part":"snippet",
@@ -50,35 +45,15 @@ def get_url_by_query(query):
     print(url)
     return url
 
-#def download_track(url,title):
-#        ydl_opts = {
-#            'format': 'm4a/bestaudio/best',
-#            'innertube_key':API_KEY,
-#            'outtmpl':title,
-#            # ℹ️ See help(yt_dlp.postprocessor) for a list of available Postprocessors and their arguments
-#            'postprocessors': [{  # Extract audio using ffmpeg
-#                'key': 'FFmpegExtractAudio',
-#                'preferredcodec': 'm4a',
-#
-#            }]
-#        }
-#
-#        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-#            error_code = ydl.download(url)
-    
-
-
 def download_single_track(url,title,album_cover=None):
     n_try=0
     while True:
         try:
             ydl_opts = {
                 'format': 'm4a/bestaudio/best',
-                #'innertube_key':API_KEY,
                 'outtmpl':title,
                 'noplaylist': True,
-                # ℹ️ See help(yt_dlp.postprocessor) for a list of available Postprocessors and their arguments
-                'postprocessors': [{  # Extract audio using ffmpeg
+                'postprocessors': [{ 
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'm4a',
                 }
@@ -89,7 +64,6 @@ def download_single_track(url,title,album_cover=None):
                 error_code = ydl.download(url)
                 print(f"{title} downloaded")
                 if (error_code==0):
-                    # ALBUM COVER DA SISTEMARE
                     if album_cover:
                         audio_file = title+".m4a"
                         output_file = title+"_with_cover.m4a"
@@ -123,14 +97,6 @@ def download_single_track(url,title,album_cover=None):
             else:
                 print(f"Failed to download {title} after retries.")
                 return title
-            
-        #except Exception as e:
-        #    print("Download error",e)            
-        #    if(n_try>5):
-        #        raise RuntimeError("Download failed")
-        #    continue
-
-
 
 def prettifySpotifyHtml(url):
     resp=requests.get(url)
@@ -151,7 +117,7 @@ def getQueryFromSpotify(soup):
     type=(soup.find("meta",attrs={"property":"og:type"})["content"])
     return query
 
-def getSpotifyAlbumCover(soup):
+def getSpotifyAlbumCover(soup, session):
     track_view_div = soup.find("div", {"data-testid": "track-view"})
     if track_view_div:
         entity_image_div = track_view_div.find("div", {"data-testid": "entity-image"})
@@ -166,7 +132,6 @@ def getSpotifyAlbumCover(soup):
                     file.write(img.content)
                 return image_name      
     return None
-
 
 def getAlbumQueryFromSpotify(soup):
     albumtitle=soup.find("meta",attrs={"property":"og:title"})["content"]
@@ -183,20 +148,19 @@ def getTypeFromSpotify(soup):
     type=(soup.find("meta",attrs={"property":"og:type"})["content"])
     return type
 
-
 def spotifyUrlSanitizer(url):
     regex=r"[&?]si=.*"
     sanitizedurl=re.sub(regex,"",url)
     return sanitizedurl
 
-def threadingDownload(track,title):   
-    url=get_url_by_query(track)
+def threadingDownload(track, title, session, to_erase, to_erase_lock):   
+    url=get_url_by_query(track, session)
     result=download_single_track(url,title)   
     if(result):
         with to_erase_lock:
             to_erase.append(result)
-def create_yt_playlist(youtube, title, description="Playlist migrata da Spotify"):
-    """Crea la playlist su YouTube e ritorna l'ID"""
+
+def create_yt_playlist(youtube, title, description="Playlist migrated from Spotify with @spotytdlbot"):
     try:
         body = {
             "snippet": {
@@ -240,13 +204,12 @@ def add_track_to_yt_playlist(youtube, playlist_id, video_id):
         print(f"Error while adding video: {video_id}: {e}")
         return False
         
-def threadingAddToPlaylist(track, title, index, results_list):
+def threadingAddToPlaylist(track, title, index, results_list, session):
     try:
-        url = get_url_by_query(track)
+        url = get_url_by_query(track, session)
         if url:
             video_id = getVideoId(url)
             if video_id:
-                
                 results_list[index] = video_id
             else:
                 print(f"Unable to find the video: {title}")
@@ -254,7 +217,6 @@ def threadingAddToPlaylist(track, title, index, results_list):
             print(f"Unable to find the video: {title}")
     except Exception as e:
         print(f"Thread error while migrating {title}: {e}")
-
 
 def getPlaylistId(url):
     regex=r"list=([^&]+)" 
@@ -276,8 +238,7 @@ def getVideoId(url):
     except Exception as e:
         raise RuntimeError("Invalid URL, can't find the Video ID")
 
-
-def getVideoIdsFromYtPlaylist(id):
+def getVideoIdsFromYtPlaylist(id, session):
     playlistapiurl="https://www.googleapis.com/youtube/v3/playlistItems"
     for key in API_KEY:
         params={
@@ -304,7 +265,7 @@ def idToYtUrl(id):
     url="https://www.youtube.com/watch?v="+id
     return url
 
-def getTitleFromVideo(id):
+def getTitleFromVideo(id, session):
     API_ENDPOINT="https://www.googleapis.com/youtube/v3/videos"
     for key in API_KEY:
         params={
@@ -321,11 +282,8 @@ def getTitleFromVideo(id):
         raise RuntimeError(f"Api key is not working")
     title=resp.json()
     print(title)    
-    #with open("response.txt","w",encoding="utf-8") as file:
-    #    json.dump(title,file, indent=4, ensure_ascii=False)
     title=title["items"][0]["snippet"]["title"]
     return title  
-
 
 def getSpotPlaylistIdFromUrl(url):
     print(url)
@@ -334,9 +292,8 @@ def getSpotPlaylistIdFromUrl(url):
     print("PLAYLIST ID",id[0])
     return id[0]
 
-
 def getPlaylistContent(access_token,id,session):
-    url="https://api-partner.spotify.com/pathfinder/v2/query" #playlist api
+    url="https://api-partner.spotify.com/pathfinder/v2/query" 
     headers= {
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
         'Accept-Encoding': 'gzip, deflate, br, zstd',
@@ -364,7 +321,7 @@ def getPlaylistContent(access_token,id,session):
             "version":1
         }
         },
-        "operationName":"fetchPlaylist", #"fetchPlaylist"
+        "operationName":"fetchPlaylist", 
         "variables":{   
         'enableWatchFeedEntrypoint': False,
          "uri": f"spotify:playlist:{str(id)}", 
@@ -391,9 +348,10 @@ def getTitlesFromSpotPlaylist(json):
         titles.append(title)    
     return titles
 
-        
-
 def main(url,cmd=None,youtube_client=None):
+    session = requests.Session()
+    to_erase = []
+    to_erase_lock = threading.Lock()
     try:
         if(cmd is None):
             if(url.startswith("https://open.spotify.com")):
@@ -402,31 +360,28 @@ def main(url,cmd=None,youtube_client=None):
                 type=getTypeFromSpotify(soup)
                 if(type=="music.song"):
                     query=getQueryFromSpotify(soup)
-                    album_cover_img=getSpotifyAlbumCover(soup)
-                    url=get_url_by_query(query)
+                    album_cover_img=getSpotifyAlbumCover(soup, session)
+                    url=get_url_by_query(query, session)
                     id=getVideoId(url)
-                    title=getTitleFromVideo(id)
+                    title=getTitleFromVideo(id, session)
                     title=sanitize_filename(title)
-                    download_single_track(url,title,album_cover_img)#
+                    download_single_track(url,title,album_cover_img)
                     return title
                 if(type=="music.album"):
                     query=getAlbumQueryFromSpotify(soup)
                     spans=soup.find_all('span',class_=lambda c: c and c.startswith("ListRowTitle") )
                     tracks=[span.get_text() for span in spans]
                     tracks=[(i,query+" "+track) for i,track in enumerate(tracks)]
-                    #titles=(sanitize_filename(title) for _,title in tracks)
                     threads = []
                     titles=[]
                     for track in tracks:
                         title=sanitize_filename(track[1])
                         titles.append(title)
-                        thread = threading.Thread(target=threadingDownload, args=(track[1],title))
+                        thread = threading.Thread(target=threadingDownload, args=(track[1], title, session, to_erase, to_erase_lock))
                         threads.append(thread)
                         thread.start()
                     for thread in threads:
-                        thread.join()          
-                        #url=get_url_by_query(track)
-                        #download_track(url)
+                        thread.join()           
                 if(type=="music.playlist"):
                     time=Spotify_helper.get_server_time(session)
                     totp=Spotify_helper.get_totp(time)
@@ -439,7 +394,7 @@ def main(url,cmd=None,youtube_client=None):
                     for track in tracks:
                         title=sanitize_filename(track)
                         titles.append(title)
-                        thread = threading.Thread(target=threadingDownload, args=(track,title))
+                        thread = threading.Thread(target=threadingDownload, args=(track, title, session, to_erase, to_erase_lock))
                         threads.append(thread)
                         thread.start()
                     for thread in threads:
@@ -453,13 +408,13 @@ def main(url,cmd=None,youtube_client=None):
 
             elif(url.startswith("https://www.youtube.com/watch")):
                 id=getVideoId(url)
-                title=getTitleFromVideo(id)
+                title=getTitleFromVideo(id, session)
                 title=sanitize_filename(title)
                 download_single_track(url,title)
                 return title
             elif(url.startswith("https://www.youtube.com/playlist")):
                 id=getPlaylistId(url)
-                video_info=getVideoIdsFromYtPlaylist(id)
+                video_info=getVideoIdsFromYtPlaylist(id, session)
                 video_info= [ (idToYtUrl(v_id), title) for v_id, title in video_info]
                 print(video_info)
                 titles=[]
@@ -504,22 +459,18 @@ def main(url,cmd=None,youtube_client=None):
             
             ordered_video_ids = [None] * len(tracks)
 
-
             for i, track in enumerate(tracks):
                 title = sanitize_filename(track)
                 titles.append(title)
                 
-
-                thread = threading.Thread(target=threadingAddToPlaylist, args=(track, title, i, ordered_video_ids))
+                thread = threading.Thread(target=threadingAddToPlaylist, args=(track, title, i, ordered_video_ids, session))
                 threads.append(thread)
                 thread.start()
             
-
             for thread in threads:
                 thread.join()    
             
             print("Adding to the playlist...")
-
 
             for video_id in ordered_video_ids:
                 if video_id:
@@ -531,9 +482,5 @@ def main(url,cmd=None,youtube_client=None):
     except RuntimeError as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
 
-    
-
-
 if __name__ == "__main__":
     main("")
-
