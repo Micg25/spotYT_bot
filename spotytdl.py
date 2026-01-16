@@ -449,7 +449,7 @@ def main(url,cmd=None,youtube_client=None,chat_id=None):
             try:
                 playlist_name = playlistjson["data"]["playlistV2"]["name"]
             except:
-                playlist_name = "Playlist Migrated with @SpotYT"
+                playlist_name = "Playlist Migrated with @spotytdlbot"
 
             yt_playlist_id = create_yt_playlist(youtube_client, playlist_name)
             
