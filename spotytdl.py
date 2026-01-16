@@ -195,8 +195,7 @@ def threadingDownload(track,title):
     if(result):
         with to_erase_lock:
             to_erase.append(result)
-def create_yt_playlist(youtube, title, description="Playlist migrata da Spotify"):
-    """Crea la playlist su YouTube e ritorna l'ID"""
+def create_yt_playlist(youtube, title, description="Playlist migrated from Spotify with @spotytdlbot):
     try:
         body = {
             "snippet": {
@@ -492,7 +491,7 @@ def main(url,cmd=None,youtube_client=None):
             try:
                 playlist_name = playlistjson["data"]["playlistV2"]["name"]
             except:
-                playlist_name = "Playlist Migrated with @SpotYT"
+                playlist_name = "Playlist Migrated with @spotytdlbot"
 
             yt_playlist_id = create_yt_playlist(youtube_client, playlist_name)
             
