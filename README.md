@@ -1,5 +1,7 @@
 # 🎵 spotYT_bot 🚀
 
+<img width="1259" height="374" alt="Screenshot from 2026-01-16 11-18-26" src="https://github.com/user-attachments/assets/60678e59-2c83-4f56-901c-886d6481f1fd" />
+
 <p align="center">
   <img src="https://img.shields.io/badge/Spotify-1ED760?style=for-the-badge&logo=spotify&logoColor=white" alt="Spotify Logo">
   <img src="https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube Logo">
