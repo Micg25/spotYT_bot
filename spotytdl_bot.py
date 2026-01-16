@@ -61,6 +61,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def sendSong(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
     print(context.args[0])
     await context.bot.send_message(chat_id=update.effective_chat.id, text="The download is starting...",parse_mode="HTML")
     try:
@@ -79,8 +80,8 @@ async def sendSong(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         break
                     try:
                         n_try+=1
-                        await context.bot.send_audio(chat_id=update.effective_chat.id,audio=open(title+".m4a","rb"))
-                        os.remove(title+".m4a")
+                        await context.bot.send_audio(chat_id=update.effective_chat.id,audio=open(title+str(chat_id)+".m4a","rb"))
+                        os.remove(title+str(chat_id)+".m4a")
                         break
                     except TimedOut:
                         print(f"⏱ Timeout while sending: '{title}', trying again...")
@@ -100,8 +101,8 @@ async def sendSong(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     break
                 try:
                     n_try+=1
-                    await context.bot.send_audio(chat_id=update.effective_chat.id,audio=open(titles+".m4a","rb"))
-                    os.remove(titles+".m4a")
+                    await context.bot.send_audio(chat_id=update.effective_chat.id,audio=open(title+str(chat_id)+".m4a","rb"))
+                    os.remove(title+str(chat_id)+".m4a")
                     break
                 except TimedOut:
                     print(f"Timeout while sending: '{titles}', trying again...")

@@ -10,8 +10,6 @@ import os
 
 API_KEY=["",""]
 
-yt_api_lock = threading.Lock()
-
 def sanitize_filename(title):
     title = re.sub(r'[^\w\s\-_.]', '', title)
     title = title.strip().replace(" ", "_")
@@ -45,13 +43,17 @@ def get_url_by_query(query, session):
     print(url)
     return url
 
-def download_single_track(url,title,album_cover=None):
+def download_single_track(url,title,album_cover=None,chat_id=None):
+    if chat_id:
+        filename = title + str(chat_id)
+    else:
+        filename = title
     n_try=0
     while True:
         try:
             ydl_opts = {
                 'format': 'm4a/bestaudio/best',
-                'outtmpl':title,
+                'outtmpl':filename,
                 'noplaylist': True,
                 'postprocessors': [{ 
                     'key': 'FFmpegExtractAudio',
@@ -62,11 +64,11 @@ def download_single_track(url,title,album_cover=None):
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 error_code = ydl.download(url)
-                print(f"{title} downloaded")
+                print(f"{filename} downloaded")
                 if (error_code==0):
                     if album_cover:
-                        audio_file = title+".m4a"
-                        output_file = title+"_with_cover.m4a"
+                        audio_file = filename+".m4a"
+                        output_file = filename+"_with_cover.m4a"
                         subprocess.run([
                             "ffmpeg", "-y",
                             "-i", audio_file,
@@ -103,8 +105,6 @@ def prettifySpotifyHtml(url):
     print(resp.status_code)
     soup=BeautifulSoup(resp.text,"html.parser")
     html=soup.prettify()
-    with open("response.txt","w",encoding="utf-8") as file:
-        file.write(html)
     return soup
 
 def getQueryFromSpotify(soup):
@@ -153,9 +153,9 @@ def spotifyUrlSanitizer(url):
     sanitizedurl=re.sub(regex,"",url)
     return sanitizedurl
 
-def threadingDownload(track, title, session, to_erase, to_erase_lock):   
+def threadingDownload(track, title, session, to_erase, to_erase_lock, chat_id):   
     url=get_url_by_query(track, session)
-    result=download_single_track(url,title)   
+    result=download_single_track(url,title,chat_id=chat_id)   
     if(result):
         with to_erase_lock:
             to_erase.append(result)
@@ -182,7 +182,7 @@ def create_yt_playlist(youtube, title, description="Playlist migrated from Spoti
         print(f"Error while creating the playlist: {e}")
         return None
     
-def add_track_to_yt_playlist(youtube, playlist_id, video_id):
+def add_track_to_yt_playlist(youtube, playlist_id, video_id, yt_api_lock):
     try:
         with yt_api_lock:
             request = youtube.playlistItems().insert(
@@ -348,10 +348,12 @@ def getTitlesFromSpotPlaylist(json):
         titles.append(title)    
     return titles
 
-def main(url,cmd=None,youtube_client=None):
+def main(url,cmd=None,youtube_client=None,chat_id=None):
     session = requests.Session()
     to_erase = []
     to_erase_lock = threading.Lock()
+    yt_api_lock = threading.Lock()
+    
     try:
         if(cmd is None):
             if(url.startswith("https://open.spotify.com")):
@@ -365,7 +367,7 @@ def main(url,cmd=None,youtube_client=None):
                     id=getVideoId(url)
                     title=getTitleFromVideo(id, session)
                     title=sanitize_filename(title)
-                    download_single_track(url,title,album_cover_img)
+                    download_single_track(url,title,album_cover_img,chat_id=chat_id)
                     return title
                 if(type=="music.album"):
                     query=getAlbumQueryFromSpotify(soup)
@@ -377,7 +379,7 @@ def main(url,cmd=None,youtube_client=None):
                     for track in tracks:
                         title=sanitize_filename(track[1])
                         titles.append(title)
-                        thread = threading.Thread(target=threadingDownload, args=(track[1], title, session, to_erase, to_erase_lock))
+                        thread = threading.Thread(target=threadingDownload, args=(track[1], title, session, to_erase, to_erase_lock, chat_id))
                         threads.append(thread)
                         thread.start()
                     for thread in threads:
@@ -394,7 +396,7 @@ def main(url,cmd=None,youtube_client=None):
                     for track in tracks:
                         title=sanitize_filename(track)
                         titles.append(title)
-                        thread = threading.Thread(target=threadingDownload, args=(track, title, session, to_erase, to_erase_lock))
+                        thread = threading.Thread(target=threadingDownload, args=(track, title, session, to_erase, to_erase_lock, chat_id))
                         threads.append(thread)
                         thread.start()
                     for thread in threads:
@@ -410,7 +412,7 @@ def main(url,cmd=None,youtube_client=None):
                 id=getVideoId(url)
                 title=getTitleFromVideo(id, session)
                 title=sanitize_filename(title)
-                download_single_track(url,title)
+                download_single_track(url,title,chat_id=chat_id)
                 return title
             elif(url.startswith("https://www.youtube.com/playlist")):
                 id=getPlaylistId(url)
@@ -422,7 +424,7 @@ def main(url,cmd=None,youtube_client=None):
                 for vurl,title in video_info:
                     title=sanitize_filename(title)
                     titles.append(title)
-                    thread = threading.Thread(target=download_single_track, args=(vurl,title))
+                    thread = threading.Thread(target=download_single_track, args=(vurl,title,None,chat_id))
                     threads.append(thread)
                     thread.start()
                 for thread in threads:
@@ -474,7 +476,7 @@ def main(url,cmd=None,youtube_client=None):
 
             for video_id in ordered_video_ids:
                 if video_id:
-                    add_track_to_yt_playlist(youtube_client, yt_playlist_id, video_id)
+                    add_track_to_yt_playlist(youtube_client, yt_playlist_id, video_id, yt_api_lock)
             
             print("Migration completed", titles)
             return titles
