@@ -9,10 +9,10 @@ import asyncio
 import httpx
 from telegram.ext import ConversationHandler, MessageHandler, filters
 from Youtube_auth import YouTubeManager
+
 BOT_TOKEN=""
 
 user_sessions = {}
-
 
 WAITING_CODE = 1
 
@@ -62,62 +62,84 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def sendSong(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    print(context.args[0])
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="The download is starting...",parse_mode="HTML")
+    
+    if not context.args:
+        await context.bot.send_message(chat_id=chat_id, text="⚠️ Error: Missing link. Usage: /dl {link}")
+        return
+
+    print(f"User {chat_id} requested: {context.args[0]}")
+    await context.bot.send_message(chat_id=chat_id, text="The download is starting...",parse_mode="HTML")
+    
     try:
-        titles=spotytdl.main(context.args[0])
+
+        titles = await asyncio.to_thread(spotytdl.main, context.args[0], chat_id=chat_id)
+        
         if (titles is None):
-            await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error while downloading: '{title}'")
+            await context.bot.send_message(chat_id=chat_id, text="Error while downloading.")
             return
+            
         print("TITLES:", titles)
-        if(type(titles)==list):
+        
+        if isinstance(titles, list):
             for title in titles:
                 n_try=0
                 print("trying to send: ",title)
+                file_path = title + str(chat_id) + ".m4a"
+                
                 while True:
                     if(n_try>5):
-                        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error while sending: {title}")
+                        await context.bot.send_message(chat_id=chat_id, text=f"Error while sending: {title}")
                         break
                     try:
                         n_try+=1
-                        await context.bot.send_audio(chat_id=update.effective_chat.id,audio=open(title+str(chat_id)+".m4a","rb"))
-                        os.remove(title+str(chat_id)+".m4a")
+                        if os.path.exists(file_path):
+                            await context.bot.send_audio(chat_id=chat_id,audio=open(file_path,"rb"))
+                            os.remove(file_path)
+                        else:
+                            print(f"File {file_path} not found (maybe download failed)")
                         break
                     except TimedOut:
                         print(f"⏱ Timeout while sending: '{title}', trying again...")
                         await asyncio.sleep(3)  
                     except TelegramError as e:
-                        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error while sending: '{title}, {e}'")
+                        await context.bot.send_message(chat_id=chat_id, text=f"Error while sending: '{title}, {e}'")
                         break  
                     except Exception as e:
-                        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error while sending: {title}, {e}")
+                        await context.bot.send_message(chat_id=chat_id, text=f"Error while sending: {title}, {e}")
                         break
         else:
-            await context.bot.send_message(chat_id=update.effective_chat.id, text="The download of the song is almost done...",parse_mode="HTML")
+            await context.bot.send_message(chat_id=chat_id, text="The download of the song is almost done...",parse_mode="HTML")
+            title = titles
+            file_path = title + str(chat_id) + ".m4a"
+            
             while True:
                 n_try=0
                 if(n_try>2):
-                    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error while sending: {titles}")
+                    await context.bot.send_message(chat_id=chat_id, text=f"Error while sending: {title}")
                     break
                 try:
                     n_try+=1
-                    await context.bot.send_audio(chat_id=update.effective_chat.id,audio=open(title+str(chat_id)+".m4a","rb"))
-                    os.remove(title+str(chat_id)+".m4a")
+                    if os.path.exists(file_path):
+                        await context.bot.send_audio(chat_id=chat_id,audio=open(file_path,"rb"))
+                        os.remove(file_path)
+                    else:
+                        await context.bot.send_message(chat_id=chat_id, text="Error: File not found on server.")
                     break
                 except TimedOut:
-                    print(f"Timeout while sending: '{titles}', trying again...")
+                    print(f"Timeout while sending: '{title}', trying again...")
                     await asyncio.sleep(3) 
                 except TelegramError as e:
-                    print(f"Error while sending: '{titles}'")
-                    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error while sending: '{titles}', {e}")
+                    print(f"Error while sending: '{title}'")
+                    await context.bot.send_message(chat_id=chat_id, text=f"Error while sending: '{title}', {e}")
                     break  
                 except Exception as e:
-                    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error while sending: '{titles}', {e}")
+                    await context.bot.send_message(chat_id=chat_id, text=f"Error while sending: '{title}', {e}")
                     break
+
     except RuntimeError as e:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"{str(e)}")
+        await context.bot.send_message(chat_id=chat_id, text=f"{str(e)}")
         return
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="Done",parse_mode="HTML")
+    await context.bot.send_message(chat_id=chat_id, text="Done",parse_mode="HTML")
     
 async def migratePlaylist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -125,7 +147,7 @@ async def migratePlaylist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     manager = user_sessions.get(chat_id)
 
     if not manager or not manager.youtube:
-        await context.bot.send_message(chat_id=chat_id, text="⚠️ Error: you must be logged in: \n<code>/login</code> ")
+        await context.bot.send_message(chat_id=chat_id, text="⚠️ Error: you must be logged in: \n<code>/login</code> ", parse_mode="HTML")
         return
 
     if not context.args:
@@ -133,8 +155,10 @@ async def migratePlaylist(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await context.bot.send_message(chat_id=chat_id, text="🔄 Creating the playlist")
-    titles=spotytdl.main(context.args[0],"migrate",manager.youtube)
+    
     try:
+        titles = await asyncio.to_thread(spotytdl.main, context.args[0], "migrate", manager.youtube)
+        
         if titles:
                 await context.bot.send_message(chat_id=chat_id, text=f"✅ Migration completed {len(titles)} songs were added.")
         else:
@@ -146,12 +170,13 @@ async def migratePlaylist(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 if __name__ == '__main__':
     
+
     request = HTTPXRequest(
-        http_version="2",
-        read_timeout=60.0,
-        write_timeout=60.0,
-        connect_timeout=60.0,
-        pool_timeout=60.0,
+        http_version="1.1", 
+        read_timeout=120.0,
+        write_timeout=120.0,
+        connect_timeout=120.0,
+        pool_timeout=120.0,
         media_write_timeout=900.0,  
     )
     application = ApplicationBuilder().token(BOT_TOKEN).request(request).build()
@@ -178,4 +203,5 @@ if __name__ == '__main__':
 
     application.add_handler(login_handler)
     
+    print("Bot is running...")
     application.run_polling()
