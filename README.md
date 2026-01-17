@@ -67,7 +67,7 @@ Python
 
     /login : Authenticate with your YouTube account (required once before migrating).
 
-    /spotifytoyoutube <spotify_link> : Migrate a Spotify playlist to your YouTube account.
+    /spotifytoyt <spotify_link> : Migrate a Spotify playlist to your YouTube account.
 
 📦 Requirements
 
