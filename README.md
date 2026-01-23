@@ -1,5 +1,7 @@
 🎵 spotYT_bot 🚀
 
+<img width="1011" height="301" alt="logo" src="https://github.com/user-attachments/assets/684fcc74-ed32-4adb-a8f2-315512061b2d" />
+
 <p align="center"> <img src="https://img.shields.io/badge/Spotify-1ED760?style=for-the-badge&logo=spotify&logoColor=white" alt="Spotify Logo"> <img src="https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube Logo"> <img src="https://img.shields.io/badge/Telegram-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Logo"> </p>
 
 A powerful Telegram bot designed to download tracks, albums, and playlists, and now featuring advanced capabilities to migrate playlists between Spotify and YouTube in both directions. It also includes smart features to resume interrupted migrations or merge playlists.
