@@ -1,88 +1,110 @@
-# 🎵 spotYT_bot 🚀
+🎵 spotYT_bot 🚀
 
-<img width="1259" height="374" alt="Screenshot from 2026-01-16 11-18-26" src="https://github.com/user-attachments/assets/60678e59-2c83-4f56-901c-886d6481f1fd" />
+<p align="center"> <img src="https://img.shields.io/badge/Spotify-1ED760?style=for-the-badge&logo=spotify&logoColor=white" alt="Spotify Logo"> <img src="https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube Logo"> <img src="https://img.shields.io/badge/Telegram-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Logo"> </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Spotify-1ED760?style=for-the-badge&logo=spotify&logoColor=white" alt="Spotify Logo">
-  <img src="https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube Logo">
-  <img src="https://img.shields.io/badge/Telegram-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Logo">
-</p>
+A powerful Telegram bot designed to download tracks, albums, and playlists, and now featuring advanced capabilities to migrate playlists between Spotify and YouTube in both directions. It also includes smart features to resume interrupted migrations or merge playlists.
+🛠 How It Works
 
-A powerful Telegram bot designed to download **tracks, albums, and playlists** seamlessly, and now **migrate your Spotify playlists directly to your YouTube account**. It bridges the gap between Spotify metadata and YouTube's vast library.
+    Metadata Retrieval: The bot uses Spotify and YouTube APIs to gather track details.
 
-## 🛠 How it works
-1. **Metadata Retrieval:** The bot uses the Spotify API (or manual input) to gather song details (Title, Artist, Album).
-2. **Search:** It leverages the **YouTube Data API** to find the most accurate video match for the song.
-3. **Download:** The audio is extracted and downloaded at high quality using `yt_dlp`.
-4. **Migration (New!):** Authenticates securely with your YouTube account to migrate your Spotify playlists on your youtube and youtube music personal account!.
+    Search & Download: Leverages yt_dlp and YouTube APIs to find and download audio in the best available quality.
 
----
+    Bidirectional Migration (New!): Secure OAuth authentication allows you to manage playlists directly on your personal YouTube and Spotify accounts.
 
-## 🚀 Getting Started
+    Resume/Append Function (New!): If you provide both a source and a destination link, the bot will smartly add only the missing songs, preventing duplicates.
 
-Follow these steps to get your bot up and running:
+🚀 Installation and Configuration
 
-### 1. Telegram Bot Token
-Open `spotytdl_bot.py` and insert your Telegram Bot Token at **row 12**:
+Follow these steps to configure the bot correctly. You need to set variables in two main files.
+1. Telegram Bot and Spotify Config (spotytdl_bot.py)
+
+Open spotytdl_bot.py and fill in the following variables at the top:
+
+    Telegram Bot:
+    Python
 
     BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
 
-###2. YouTube API Keys
+    YouTube OAuth (Multi-Account): The bot supports rotating multiple Google accounts to bypass quota limits. Enter the filenames of your JSON credentials (downloaded from Google Cloud Console):
+    Python
 
-Open spotytdl.py and add your YouTube API keys at row 10. You can add multiple keys to avoid rate limits:
-Python
+    CLIENT_SECRETS_FILE = ["client_secrets.json", "client_secrets2.json"]
 
-    API_KEY = ["KEY_1", "KEY_2"]
+    Spotify App Credentials: Create an app on the Spotify Developer Dashboard and enter the details:
+    Python
 
-###3. YouTube OAuth Credentials (Required for Migration)
+    SPOTIFY_CLIENT_ID = "YOUR_CLIENT_ID"
+    SPOTIFY_CLIENT_SECRET = "YOUR_CLIENT_SECRET"
+    SPOTIFY_REDIRECT_URI = "http://127.0.0.1:8888/callback" # Or the URI you set in the dashboard
 
-To use the playlist migration feature (/SpotifyToYoutube), the bot needs to act on your behalf:
+2. Advanced YouTube Config (spotytdl.py)
 
-    Go to the Google Cloud Console.
+Open spotytdl.py and configure the following:
 
-    Create a new Project or select an existing one.
+    SOCS Cookie (Crucial): To prevent GDPR consent blocks when scraping public playlists, you must enter the value of the SOCS cookie from Google (get this by inspecting browser requests on YouTube):
+    Python
 
-    Navigate to APIs & Services > Credentials.
+    SOCS = "YOUR_SOCS_COOKIE_VALUE"
 
-    Click Create Credentials > OAuth Client ID.
+🎮 Available Commands
+🔐 Authentication
 
-    Select Desktop App as the application type.
+Before migrating playlists, you must log in to the respective services:
 
-    Download the JSON file, rename it to client_secrets.json, and place it in the main directory of the bot.
+    /loginyoutube : Log in to your YouTube account (required to create playlists or add videos). Supports account rotation if quota is exceeded.
 
-    Important: Ensure you add your email (and any other testers) to the Test Users list in the "OAuth Consent Screen" section.
+    /loginspotify : Log in to your Spotify account (required to create playlists on Spotify).
 
-###4. Spotify Access Token (Temporary Workaround)
+📥 Download
 
-    [!IMPORTANT] The automatic Spotify token retrieval is currently under maintenance.
+    /dl <link> : Download single tracks, albums, or entire playlists from Spotify or YouTube and receive them as audio files on Telegram.
 
-If you need to download Spotify Playlists or Albums, you must manually provide a valid access token. Open spotytdl.py, go to row 127 and insert your token:
-Python
+🔄 Migration (/migrate)
 
-    access_token = "YOUR_SPOTIFY_ACCESS_TOKEN"
+The /migrate command is smart and changes behavior based on the links provided:
 
-🎮 Commands
+    Spotify ➡ YouTube (New Playlist) Creates a new playlist on YouTube with songs from Spotify.
 
-    /dl <link> : Download tracks, albums, or playlists from Spotify/YouTube.
+    /migrate <spotify_playlist_link>
 
-    /login : Authenticate with your YouTube account (required once before migrating).
+    YouTube ➡ Spotify (New Playlist) Creates a new playlist on Spotify with videos from YouTube.
 
-    /spotifytoyt <spotify_link> : Migrate a Spotify playlist to your YouTube account.
+    /migrate <youtube_playlist_link>
+
+    Spotify ➡ YouTube (Append/Resume) Adds songs from a Spotify playlist to an existing YouTube playlist. Useful for updating playlists or resuming an interrupted migration (skips existing duplicates).
+
+    /migrate <spotify_playlist_link> <existing_youtube_playlist_link>
+
+    YouTube ➡ Spotify (Append/Resume) Adds songs from a YouTube playlist to an existing Spotify playlist.
+
+    /migrate <youtube_playlist_link> <existing_spotify_playlist_link>
 
 📦 Requirements
 
     Python 3.x
 
-    yt_dlp
+    FFmpeg (installed on the system for audio conversion)
 
-    python-telegram-bot
+    Python Libraries:
 
-    google-auth-oauthlib
+        python-telegram-bot
 
-    google-api-python-client
+        yt_dlp
 
-    A valid YouTube Data API v3 Key
+        spotipy
 
-    client_secrets.json for OAuth functionality
+        google-auth-oauthlib
+
+        google-api-python-client
+
+        requests
+
+        beautifulsoup4
+
+⚠️ Important Notes
+
+    YouTube Quotas: Adding videos to playlists consumes a lot of API quota. The bot handles automatic rotation of client_secrets.json files if you provide more than one.
+
+    SOCS Cookie: Without a valid SOCS cookie in spotytdl.py, functions reading public YouTube playlists may fail due to Google's consent banners.
 
 Developed with ❤️ for music lovers.
